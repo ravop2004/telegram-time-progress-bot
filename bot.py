@@ -1,10 +1,12 @@
 import asyncio
 import logging
 import os
+import threading
 from datetime import datetime, timedelta
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 import random
+from flask import Flask
 
 # Enable logging
 logging.basicConfig(
@@ -175,6 +177,7 @@ async def update_message_continuously(chat_id: int, message_id: int, context: Ca
                 chat_id=chat_id,
                 message_id=message_id,
                 text=new_message
+                # NO parse_mode parameter - using plain text
             )
             
             # Wait for 5 seconds to avoid flood control
@@ -290,7 +293,6 @@ Enjoy watching time progress! ⏳"""
     await update.message.reply_text(help_text)
 
 # ==================== WEB SERVER FOR RENDER ====================
-from flask import Flask, request
 app = Flask(__name__)
 
 @app.route('/')
@@ -301,15 +303,16 @@ def home():
 def health():
     return "OK", 200
 
-# ==================== MAIN FUNCTION ====================
-async def main():
-    """Start the bot"""
-    # Get Token from Environment Variable (Secure way)
+def run_flask():
+    """Run Flask web server"""
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
+
+# ==================== BOT RUN FUNCTION ====================
+def run_bot():
+    """Run the bot"""
+    # Get Token from Environment Variable
     TOKEN = os.environ.get("BOT_TOKEN", "YOUR_BOT_TOKEN")
-    
-    if not TOKEN:
-        logger.error("No BOT_TOKEN found in environment variables!")
-        return
     
     # Create Application
     application = Application.builder().token(TOKEN).build()
@@ -322,32 +325,24 @@ async def main():
     application.add_handler(CommandHandler("help", help_command))
     
     # Start the Bot
-    logger.info("🤖 Bot is starting...")
-    logger.info("⏳ Live Time Progress Bot")
-    logger.info("📊 Exact format matching")
-    logger.info("🔄 5-second updates")
+    print("🤖 Bot is starting...")
+    print("⏳ Live Time Progress Bot")
+    print("📊 Exact format matching")
+    print("🔄 5-second updates")
+    print("📝 Plain text mode (no Markdown)")
     
-    # Start polling
-    await application.initialize()
-    await application.start()
-    await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-    
-    # Keep the bot running
-    while True:
-        await asyncio.sleep(3600)
+    application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
-def run_flask():
-    """Run Flask web server"""
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
-
-if __name__ == '__main__':
-    # For Render, we need to run both bot and web server
-    import threading
-    
+# ==================== MAIN FUNCTION ====================
+def main():
+    """Main function to run both Flask and bot"""
     # Start Flask in a separate thread
     flask_thread = threading.Thread(target=run_flask, daemon=True)
     flask_thread.start()
+    print(f"🌐 Flask server started on port {os.environ.get('PORT', 10000)}")
     
-    # Run the bot in main thread
-    asyncio.run(main())
+    # Run bot in main thread
+    run_bot()
+
+if __name__ == '__main__':
+    main()
