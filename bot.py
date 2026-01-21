@@ -116,6 +116,29 @@ def get_progress_bar(percentage, bar_length=20):
     bar = "█" * filled + "░" * empty
     return bar
 
+def format_12h_time(ist_time):
+    """Format time in 12-hour format with AM/PM"""
+    hour = ist_time.hour
+    minute = ist_time.minute
+    second = ist_time.second
+    
+    # Convert to 12-hour format
+    if hour == 0:
+        hour_12 = 12
+        period = "AM"
+    elif hour < 12:
+        hour_12 = hour
+        period = "AM"
+    elif hour == 12:
+        hour_12 = 12
+        period = "PM"
+    else:
+        hour_12 = hour - 12
+        period = "PM"
+    
+    # Format with leading zeros
+    return f"{hour_12:02d}:{minute:02d}:{second:02d} {period}"
+
 # ==================== MESSAGE GENERATOR ====================
 def generate_progress_message():
     """Generate the complete progress message in exact format using IST"""
@@ -137,6 +160,9 @@ def generate_progress_message():
     year_percent = f"{year_progress:.6f}".rstrip('0').rstrip('.')
     day_percent = f"{day_progress:.6f}".rstrip('0').rstrip('.')
     second_percent = f"{second_progress:.2f}".rstrip('0').rstrip('.')
+    
+    # Get time in 12-hour format
+    time_12h = format_12h_time(now)
     
     # Build message in exact format - PLAIN TEXT (no Markdown)
     message = f"""⏰ LIVE TIME PROGRESS ⏰
@@ -162,7 +188,7 @@ def generate_progress_message():
 
 ⏰ CURRENT TIME (IST)
 ├ Date: {now.strftime("%d %b %Y")}
-├ Time: {now.strftime("%H:%M:%S")}
+├ Time: {time_12h}
 └ Second: {now.second}
 ══════════════════════
 💭 QUOTE OF THE MINUTE
@@ -296,7 +322,7 @@ Features:
 • Month information
 • Quotes change every minute
 • Updates every 5 seconds
-• Indian Standard Time (IST)
+• Indian Standard Time (IST) in 12-hour format
 
 Enjoy watching time progress! ⏳"""
     
@@ -341,6 +367,7 @@ def run_bot():
     print("🔄 5-second updates")
     print("📝 Plain text mode (no Markdown)")
     print("🇮🇳 Using Indian Standard Time (IST)")
+    print("🕐 12-hour format with AM/PM")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
