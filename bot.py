@@ -58,22 +58,46 @@ def get_ist_time():
     return ist_time
 
 def get_year_progress():
-    """Calculate year progress percentage using IST"""
+    """Calculate year progress percentage using IST - Indian Standard Time based"""
     now = get_ist_time()
-    start = datetime(now.year, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
-    end = datetime(now.year + 1, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
-    total_seconds = (end - start).total_seconds()
-    elapsed_seconds = (now - start).total_seconds()
+    
+    # Year start at 00:00:00 IST (which is 18:30:00 UTC previous day)
+    year_start_ist = datetime(now.year, 1, 1, 0, 0, 0)  # 1st Jan, 00:00:00 IST
+    # Convert to UTC for calculation
+    year_start_utc = year_start_ist - timedelta(hours=5, minutes=30)
+    
+    # Next year start at 00:00:00 IST
+    next_year_start_ist = datetime(now.year + 1, 1, 1, 0, 0, 0)
+    next_year_start_utc = next_year_start_ist - timedelta(hours=5, minutes=30)
+    
+    # Current time in UTC
+    now_utc = datetime.now(timezone.utc)
+    
+    total_seconds = (next_year_start_utc - year_start_utc).total_seconds()
+    elapsed_seconds = (now_utc - year_start_utc).total_seconds()
+    
     percentage = (elapsed_seconds / total_seconds) * 100
     return min(percentage, 100)
 
 def get_day_progress():
-    """Calculate day progress percentage using IST"""
+    """Calculate day progress percentage using IST - Indian Standard Time based"""
     now = get_ist_time()
-    start = datetime(now.year, now.month, now.day).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
-    end = start + timedelta(days=1)
-    total_seconds = (end - start).total_seconds()
-    elapsed_seconds = (now - start).total_seconds()
+    
+    # Today start at 00:00:00 IST
+    today_start_ist = datetime(now.year, now.month, now.day, 0, 0, 0)
+    # Convert to UTC for calculation
+    today_start_utc = today_start_ist - timedelta(hours=5, minutes=30)
+    
+    # Tomorrow start at 00:00:00 IST
+    tomorrow_start_ist = today_start_ist + timedelta(days=1)
+    tomorrow_start_utc = tomorrow_start_ist - timedelta(hours=5, minutes=30)
+    
+    # Current time in UTC
+    now_utc = datetime.now(timezone.utc)
+    
+    total_seconds = (tomorrow_start_utc - today_start_utc).total_seconds()
+    elapsed_seconds = (now_utc - today_start_utc).total_seconds()
+    
     percentage = (elapsed_seconds / total_seconds) * 100
     return min(percentage, 100)
 
@@ -89,14 +113,19 @@ def get_month_info():
     now = get_ist_time()
     month_name = now.strftime("%B")
     
-    if now.month == 12:
-        next_month = datetime(now.year + 1, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
-    else:
-        next_month = datetime(now.year, now.month + 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    # Month calculations based on IST
+    current_month_start = datetime(now.year, now.month, 1, 0, 0, 0)  # 1st of month, 00:00:00 IST
     
-    current_month_start = datetime(now.year, now.month, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
-    days_in_month = (next_month - current_month_start).days
-    days_left = days_in_month - now.day
+    if now.month == 12:
+        next_month_start = datetime(now.year + 1, 1, 1, 0, 0, 0)
+    else:
+        next_month_start = datetime(now.year, now.month + 1, 1, 0, 0, 0)
+    
+    # Days in month calculation
+    days_in_month = (next_month_start - current_month_start).days
+    days_left = (next_month_start - now).days
+    
+    # Months left in year
     months_left = 12 - now.month
     
     return month_name, days_left, months_left
@@ -323,6 +352,7 @@ Features:
 • Quotes change every minute
 • Updates every 5 seconds
 • Indian Standard Time (IST) in 12-hour format
+• All calculations based on IST timezone
 
 Enjoy watching time progress! ⏳"""
     
@@ -368,6 +398,7 @@ def run_bot():
     print("📝 Plain text mode (no Markdown)")
     print("🇮🇳 Using Indian Standard Time (IST)")
     print("🕐 12-hour format with AM/PM")
+    print("📅 Year & Day progress based on IST")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
