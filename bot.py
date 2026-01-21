@@ -2,7 +2,7 @@ import asyncio
 import logging
 import os
 import threading
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from telegram import Update
 from telegram.ext import Application, CommandHandler, CallbackContext
 import random
@@ -49,6 +49,65 @@ QUOTES = [
     "The most precious things in life are not things, but moments."
 ]
 
+# ==================== INDIAN STANDARD TIME (IST) FUNCTIONS ====================
+def get_ist_time():
+    """Get current Indian Standard Time (UTC+5:30)"""
+    utc_now = datetime.now(timezone.utc)
+    ist_offset = timedelta(hours=5, minutes=30)
+    ist_time = utc_now + ist_offset
+    return ist_time
+
+def get_year_progress():
+    """Calculate year progress percentage using IST"""
+    now = get_ist_time()
+    start = datetime(now.year, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    end = datetime(now.year + 1, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    total_seconds = (end - start).total_seconds()
+    elapsed_seconds = (now - start).total_seconds()
+    percentage = (elapsed_seconds / total_seconds) * 100
+    return min(percentage, 100)
+
+def get_day_progress():
+    """Calculate day progress percentage using IST"""
+    now = get_ist_time()
+    start = datetime(now.year, now.month, now.day).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    end = start + timedelta(days=1)
+    total_seconds = (end - start).total_seconds()
+    elapsed_seconds = (now - start).total_seconds()
+    percentage = (elapsed_seconds / total_seconds) * 100
+    return min(percentage, 100)
+
+def get_second_progress():
+    """Calculate second progress within current minute using IST"""
+    now = get_ist_time()
+    seconds = now.second
+    percentage = (seconds / 59) * 100
+    return min(percentage, 100)
+
+def get_month_info():
+    """Get current month and days left using IST"""
+    now = get_ist_time()
+    month_name = now.strftime("%B")
+    
+    if now.month == 12:
+        next_month = datetime(now.year + 1, 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    else:
+        next_month = datetime(now.year, now.month + 1, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    
+    current_month_start = datetime(now.year, now.month, 1).replace(tzinfo=timezone.utc) + timedelta(hours=5, minutes=30)
+    days_in_month = (next_month - current_month_start).days
+    days_left = days_in_month - now.day
+    months_left = 12 - now.month
+    
+    return month_name, days_left, months_left
+
+def get_random_quote():
+    """Get a random quote based on current minute using IST"""
+    now = get_ist_time()
+    minute = now.minute
+    quote_index = minute % len(QUOTES)
+    return QUOTES[quote_index]
+
 # ==================== HELPER FUNCTIONS ====================
 def get_progress_bar(percentage, bar_length=20):
     """Create simple progress bar"""
@@ -57,67 +116,17 @@ def get_progress_bar(percentage, bar_length=20):
     bar = "█" * filled + "░" * empty
     return bar
 
-def get_year_progress():
-    """Calculate year progress percentage"""
-    now = datetime.now()
-    start = datetime(now.year, 1, 1)
-    end = datetime(now.year + 1, 1, 1)
-    total_seconds = (end - start).total_seconds()
-    elapsed_seconds = (now - start).total_seconds()
-    percentage = (elapsed_seconds / total_seconds) * 100
-    return min(percentage, 100)
-
-def get_day_progress():
-    """Calculate day progress percentage"""
-    now = datetime.now()
-    start = datetime(now.year, now.month, now.day)
-    end = start + timedelta(days=1)
-    total_seconds = (end - start).total_seconds()
-    elapsed_seconds = (now - start).total_seconds()
-    percentage = (elapsed_seconds / total_seconds) * 100
-    return min(percentage, 100)
-
-def get_second_progress():
-    """Calculate second progress within current minute"""
-    now = datetime.now()
-    seconds = now.second
-    percentage = (seconds / 59) * 100
-    return min(percentage, 100)
-
-def get_month_info():
-    """Get current month and days left"""
-    now = datetime.now()
-    month_name = now.strftime("%B")
-    
-    if now.month == 12:
-        next_month = datetime(now.year + 1, 1, 1)
-    else:
-        next_month = datetime(now.year, now.month + 1, 1)
-    
-    days_in_month = (next_month - datetime(now.year, now.month, 1)).days
-    days_left = days_in_month - now.day
-    months_left = 12 - now.month
-    
-    return month_name, days_left, months_left
-
-def get_random_quote():
-    """Get a random quote based on current minute"""
-    now = datetime.now()
-    minute = now.minute
-    quote_index = minute % len(QUOTES)
-    return QUOTES[quote_index]
-
 # ==================== MESSAGE GENERATOR ====================
 def generate_progress_message():
-    """Generate the complete progress message in exact format"""
-    # Get all progress data
+    """Generate the complete progress message in exact format using IST"""
+    # Get all progress data using IST
     year_progress = get_year_progress()
     day_progress = get_day_progress()
     second_progress = get_second_progress()
     month_name, days_left, months_left = get_month_info()
     quote = get_random_quote()
     
-    now = datetime.now()
+    now = get_ist_time()
     
     # Generate progress bars
     year_bar = get_progress_bar(year_progress)
@@ -151,7 +160,7 @@ def generate_progress_message():
 ├ Days Remaining: {days_left} days
 └ Months Remaining: {months_left} months
 
-⏰ CURRENT TIME
+⏰ CURRENT TIME (IST)
 ├ Date: {now.strftime("%d %b %Y")}
 ├ Time: {now.strftime("%H:%M:%S")}
 └ Second: {now.second}
@@ -287,6 +296,7 @@ Features:
 • Month information
 • Quotes change every minute
 • Updates every 5 seconds
+• Indian Standard Time (IST)
 
 Enjoy watching time progress! ⏳"""
     
@@ -330,6 +340,7 @@ def run_bot():
     print("📊 Exact format matching")
     print("🔄 5-second updates")
     print("📝 Plain text mode (no Markdown)")
+    print("🇮🇳 Using Indian Standard Time (IST)")
     
     application.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
 
